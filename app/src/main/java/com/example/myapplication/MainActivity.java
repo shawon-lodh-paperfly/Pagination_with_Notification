@@ -1,73 +1,131 @@
 package com.example.myapplication;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
-
-import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
+import android.os.Handler;
 
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import java.util.ArrayList;
 import java.util.Random;
 
-public class MainActivity extends AppCompatActivity {
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
+//import static com.example.recyclerviewpagination.PaginationListener.PAGE_START;
+import static com.example.myapplication.PaginationListener.PAGE_START;
+
+public class MainActivity extends AppCompatActivity
+        implements SwipeRefreshLayout.OnRefreshListener {
+
+    private static final String TAG = "MainActivity";
+
+    @BindView(R.id.recyclerView)
+    RecyclerView mRecyclerView;
+    @BindView(R.id.swipeRefresh)
+    SwipeRefreshLayout swipeRefresh;
+    private PostRecyclerAdapter adapter;
+    private int currentPage = PAGE_START;
+    private boolean isLastPage = false;
+    private int totalPage = 5;
+    private boolean isLoading = false;
+    int itemCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
 
-        findViewById(R.id.buttonShowNotification).setOnClickListener(new View.OnClickListener() {
+        swipeRefresh.setOnRefreshListener(this);
+
+        mRecyclerView.setHasFixedSize(true);
+        // use a linear layout manager
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        mRecyclerView.setLayoutManager(layoutManager);
+
+        adapter = new PostRecyclerAdapter(new ArrayList<>());
+        mRecyclerView.setAdapter(adapter);
+
+        showJustNotification("Page Number","You are in "+currentPage);
+        doApiCall();
+
+
+        mRecyclerView.addOnScrollListener(new PaginationListener(layoutManager) {
             @Override
-            public void onClick(View view) {
-                showNotificationWithImage();
+            protected void loadMoreItems() {
+                isLoading = true;
+                currentPage++;
+                doApiCall();
+                showJustNotification("Page Number","You are in "+currentPage);
+            }
+
+            @Override
+            public boolean isLastPage() {
+                return isLastPage;
+            }
+
+            @Override
+            public boolean isLoading() {
+                return isLoading;
             }
         });
+
+
     }
 
 
-    //notification with image
-    @SuppressLint("StaticFieldLeak")
-    private void showNotificationWithImage() {
-        new AsyncTask<String, Void, Bitmap>() {
-            @Override
-            protected Bitmap doInBackground(String... strings) {
-                InputStream inputStream;
-                try {
-                    URL url = new URL(strings[0]);
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    connection.setDoInput(true);
-                    connection.connect();
-                    inputStream = connection.getInputStream();
-                    return BitmapFactory.decodeStream(inputStream);
-                } catch (Exception ignored) {
+    private void doApiCall() {
+        final ArrayList<PostItem> items = new ArrayList<>();
+        new Handler().postDelayed(new Runnable() {
 
+            @Override
+            public void run() {
+                for (int i = 0; i < 10; i++) {
+                    itemCount++;
+                    PostItem postItem = new PostItem();
+                    postItem.setTitle(getString(R.string.text_title) + itemCount);
+                    postItem.setDescription(getString(R.string.text_description));
+                    items.add(postItem);
                 }
-                return null;
-            }
+                // do this all stuff on Success of APIs response
 
-            @Override
-            protected void onPostExecute(Bitmap bitmap) {
-                showNotification(bitmap);
+                if (currentPage != PAGE_START) adapter.removeLoading();
+                adapter.addItems(items);
+                swipeRefresh.setRefreshing(false);
+
+                // check weather is last page or not
+                if (currentPage < totalPage) {
+                    adapter.addLoading();
+                } else {
+                    isLastPage = true;
+                }
+                isLoading = false;
             }
-        }.execute("https://images.unsplash.com/photo-1512626120412-faf41adb4874?ixlib=rb-1.2.1&ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&auto=format&fit=crop&w=1050&q=80");
+        }, 1000);
     }
 
+    @Override
+    public void onRefresh() {
+        itemCount = 0;
+        currentPage = PAGE_START;
+        isLastPage = false;
+        adapter.clear();
+        showJustNotification("Page Number","You are in "+currentPage);
+        doApiCall();
+    }
 
-    private void showNotification(Bitmap bitmap) {
-
+    private void showJustNotification(String title,String text) {
         int notificationId = new Random().nextInt(100);
         String channelId = "notification_channel_2";
 
@@ -81,12 +139,12 @@ public class MainActivity extends AppCompatActivity {
                 getApplicationContext(), channelId);
         builder.setSmallIcon(R.drawable.ic_baseline_notifications_24);
         builder.setDefaults(NotificationCompat.DEFAULT_ALL);
-        builder.setContentTitle("Notification 2");
-        builder.setContentText("Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s");
+        builder.setContentTitle(title);
+        builder.setContentText(text);
 
         //notification with big text style
         //builder.setStyle(new NotificationCompat.BigTextStyle().bigText("Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s"));
-        builder.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(bitmap));
+//        builder.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(bitmap));
 
 
         builder.setContentIntent(pendingIntent);
@@ -111,4 +169,5 @@ public class MainActivity extends AppCompatActivity {
             notificationManager.notify(notificationId, notification);
         }
     }
+
 }
