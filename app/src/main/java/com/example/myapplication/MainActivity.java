@@ -22,7 +22,6 @@ import java.util.Random;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
-//import static com.example.recyclerviewpagination.PaginationListener.PAGE_START;
 import static com.example.myapplication.PaginationListener.PAGE_START;
 
 public class MainActivity extends AppCompatActivity
@@ -57,7 +56,11 @@ public class MainActivity extends AppCompatActivity
         adapter = new PostRecyclerAdapter(new ArrayList<>());
         mRecyclerView.setAdapter(adapter);
 
-        showJustNotification("Page Number","You are in "+currentPage);
+        showJustNotification("Page Number",currentPage);
+        if(currentPage != 1 ){
+            String text = "firstPage";
+        }
+
         doApiCall();
 
 
@@ -67,7 +70,7 @@ public class MainActivity extends AppCompatActivity
                 isLoading = true;
                 currentPage++;
                 doApiCall();
-                showJustNotification("Page Number","You are in "+currentPage);
+                showJustNotification("Page Number",currentPage);
             }
 
             @Override
@@ -121,11 +124,32 @@ public class MainActivity extends AppCompatActivity
         currentPage = PAGE_START;
         isLastPage = false;
         adapter.clear();
-        showJustNotification("Page Number","You are in "+currentPage);
+        showJustNotification("Page Number",currentPage);
         doApiCall();
     }
 
-    private void showJustNotification(String title,String text) {
+    private void showJustNotification(String title,int currentPage) {
+
+        String page_number = "";
+        switch (currentPage){
+            case 1:
+                page_number = "first";
+                break;
+            case 2 :
+                page_number = "second";
+                break;
+            case 3 :
+                page_number = "third";
+                break;
+            case 4 :
+                page_number = "fourth";
+                break;
+            case 5 :
+                page_number = "fifth";
+                break;
+        }
+
+
         int notificationId = new Random().nextInt(100);
         String channelId = "notification_channel_2";
 
@@ -140,7 +164,7 @@ public class MainActivity extends AppCompatActivity
         builder.setSmallIcon(R.drawable.ic_baseline_notifications_24);
         builder.setDefaults(NotificationCompat.DEFAULT_ALL);
         builder.setContentTitle(title);
-        builder.setContentText(text);
+        builder.setContentText("You are in "+ page_number + " page");
 
         //notification with big text style
         //builder.setStyle(new NotificationCompat.BigTextStyle().bigText("Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s"));
